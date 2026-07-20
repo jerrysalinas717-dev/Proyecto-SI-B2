@@ -1,0 +1,55 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Depurar servidor Express",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["--import", "tsx", "src/servidor.ts"],
+      "cwd": "${workspaceFolder}/servidor",
+      "envFile": "${workspaceFolder}/servidor/.env",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Depurar servicio prediccion",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/procesamiento-datos/servicio-prediccion/aplicacion/principal.mjs",
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/procesamiento-datos/.env",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Entrenar modelo",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/procesamiento-datos/aprendizaje/entrenar_modelo.mjs",
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/procesamiento-datos/.env",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Ejecutar ETL muestra",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/procesamiento-datos/etl/ejecutar_etl.mjs",
+      "args": ["--muestra"],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/procesamiento-datos/.env",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Servidor y prediccion",
+      "configurations": ["Depurar servicio prediccion", "Depurar servidor Express"],
+      "stopAll": true
+    }
+  ]
+}
+

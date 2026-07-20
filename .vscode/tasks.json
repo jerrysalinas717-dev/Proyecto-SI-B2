@@ -1,0 +1,113 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "configurar postgres",
+      "type": "shell",
+      "command": "powershell",
+      "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/automatizacion/configurar-postgres.ps1"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "instalar todo",
+      "type": "shell",
+      "command": "npm.cmd",
+      "args": ["run", "instalar:todo"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "desarrollo completo",
+      "type": "shell",
+      "command": "npm.cmd",
+      "args": ["run", "desarrollo"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "desarrollo servidor",
+      "type": "shell",
+      "command": "npm.cmd",
+      "args": ["run", "desarrollo:servidor"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "desarrollo cliente",
+      "type": "shell",
+      "command": "npm.cmd",
+      "args": ["run", "desarrollo:cliente"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "desarrollo prediccion",
+      "type": "shell",
+      "command": "npm.cmd",
+      "args": ["run", "desarrollo:prediccion"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "etl muestra",
+      "type": "shell",
+      "command": "npm.cmd",
+      "args": ["run", "etl:muestra"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "etl completo",
+      "type": "shell",
+      "command": "npm.cmd",
+      "args": ["run", "etl:completo"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "entrenar modelo",
+      "type": "shell",
+      "command": "npm.cmd",
+      "args": ["run", "modelo:entrenar"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "pruebas",
+      "type": "shell",
+      "command": "npm.cmd",
+      "args": ["run", "pruebas"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "analizar",
+      "type": "shell",
+      "command": "npm.cmd",
+      "args": ["run", "analizar"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "compilar",
+      "type": "shell",
+      "command": "npm.cmd",
+      "args": ["run", "compilar"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": []
+    }
+  ]
+}

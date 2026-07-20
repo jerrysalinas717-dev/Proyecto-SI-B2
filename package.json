@@ -1,0 +1,23 @@
+{
+  "name": "futbol-predice-bi",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Sistema de Inteligencia de Negocios para analisis y prediccion de futbol europeo con PostgreSQL y Node.js.",
+  "scripts": {
+    "instalar:todo": "npm install && npm --prefix servidor install && npm --prefix cliente-web install",
+    "desarrollo:servidor": "npm --prefix servidor run desarrollo",
+    "desarrollo:cliente": "npm --prefix cliente-web run desarrollo",
+    "desarrollo:prediccion": "node procesamiento-datos/servicio-prediccion/aplicacion/principal.mjs",
+    "desarrollo": "concurrently --kill-others-on-fail \"npm run desarrollo:prediccion\" \"npm run desarrollo:servidor\" \"npm run desarrollo:cliente\"",
+    "usuarios:prueba": "npm --prefix servidor run usuarios:prueba",
+    "pruebas": "npm --prefix servidor run pruebas && npm --prefix cliente-web run pruebas && node --test \"procesamiento-datos/pruebas/*.test.mjs\"",
+    "analizar": "npm --prefix servidor run analizar && npm --prefix cliente-web run analizar",
+    "compilar": "npm --prefix servidor run compilar && npm --prefix cliente-web run compilar",
+    "etl:muestra": "node procesamiento-datos/etl/ejecutar_etl.mjs --muestra",
+    "etl:completo": "node procesamiento-datos/etl/ejecutar_etl.mjs",
+    "modelo:entrenar": "node procesamiento-datos/aprendizaje/entrenar_modelo.mjs"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

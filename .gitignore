@@ -1,0 +1,46 @@
+# Dependencias
+node_modules/
+**/node_modules/
+
+# Compilacion
+dist/
+**/dist/
+build/
+**/build/
+*.tsbuildinfo
+
+# Variables privadas
+.env
+**/.env
+.env.local
+**/.env.local
+
+# Datos grandes originales
+datos/originales/*.csv
+datos/procesados/*
+!datos/procesados/.gitkeep
+
+# Modelos generados
+modelos/*.json
+!modelos/.gitkeep
+
+# Pruebas y registros
+coverage/
+**/coverage/
+*.log
+logs/
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Editores
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+.idea/
+
+# Temporales
+*.tmp
+*.temp
