@@ -32,19 +32,32 @@ export async function* leerCsv(rutaArchivo, opciones = {}) {
   const lector = readline.createInterface({ input: flujo, crlfDelay: Number.POSITIVE_INFINITY });
   let cabeceras = null;
   let numeroFila = 0;
+  
   for await (const linea of lector) {
     numeroFila += 1;
+    
+    // 1. Primero procesa la cabecera
     if (numeroFila === 1) {
       cabeceras = analizarLineaCsv(linea);
       continue;
     }
+
+    // --- NUEVA LÓGICA PARA SALTAR FILAS ---
+    // Le sumamos 1 a opciones.saltar para tener en cuenta la fila de la cabecera
+    if (opciones.saltar && numeroFila <= opciones.saltar + 1) {
+      continue;
+    }
+    // --------------------------------------
+
     if (!linea.trim()) continue;
     const valores = analizarLineaCsv(linea);
     const fila = {};
     cabeceras.forEach((cabecera, indice) => {
       fila[cabecera] = valores[indice] ?? null;
     });
+    
     yield { fila, numeroFila };
+    
     if (opciones.limite && numeroFila > opciones.limite) break;
   }
 }
@@ -59,4 +72,3 @@ export function escribirCsv(rutaArchivo, cabeceras, filas) {
   for (const fila of filas) lineas.push(cabeceras.map((cabecera) => escapar(fila[cabecera])).join(","));
   fs.writeFileSync(rutaArchivo, `${lineas.join("\n")}\n`, "utf8");
 }
-

@@ -415,7 +415,7 @@ async function cargarEventos(pool, loteId, rutaEventos, partidosCargados, resume
   }
 
   try {
-    for await (const { fila, numeroFila } of leerCsv(rutaEventos)) {
+    for await (const { fila, numeroFila } of leerCsv(rutaEventos, { saltar: 18400, limite: 500001 })) {
       if (!partidosCargados.has(fila.id_odsp)) continue;
       resumen.filasLeidas += 1;
 
