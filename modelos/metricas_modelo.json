@@ -1,0 +1,39 @@
+{
+  "exactitud": 0.49019607843137253,
+  "precisionMacro": 0.4351851851851852,
+  "exhaustividadMacro": 0.4121144555927165,
+  "f1Macro": 0.3857548483874424,
+  "matrizConfusion": [
+    [
+      19,
+      3,
+      1
+    ],
+    [
+      8,
+      5,
+      2
+    ],
+    [
+      11,
+      1,
+      1
+    ]
+  ],
+  "cantidadEntrenamiento": 202,
+  "cantidadPrueba": 51,
+  "fechaEntrenamiento": "2026-07-23T04:21:15.257Z",
+  "variablesUtilizadas": [
+    "promedio_goles_favor_local_ultimos_5",
+    "promedio_goles_contra_local_ultimos_5",
+    "promedio_goles_favor_visitante_ultimos_5",
+    "promedio_goles_contra_visitante_ultimos_5",
+    "promedio_tiros_local_ultimos_5",
+    "promedio_tiros_visitante_ultimos_5",
+    "tasa_conversion_local_ultimos_5",
+    "tasa_conversion_visitante_ultimos_5",
+    "tasa_puntos_local_ultimos_5",
+    "tasa_puntos_visitante_ultimos_5"
+  ],
+  "fuenteDatos": "PostgreSQL: almacen.hecho_partido"
+}
