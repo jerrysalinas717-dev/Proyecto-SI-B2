@@ -64,8 +64,10 @@ export function crearAplicacionPrediccion() {
 }
 
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replaceAll("\\", "/"))) {
-  const puerto = configuracionProcesamiento.puertoPrediccion;
+  // process.env.PORT es la variable que inyecta Railway automáticamente
+  const puerto = process.env.PORT || configuracionProcesamiento.puertoPrediccion;
+  
   crearAplicacionPrediccion().listen(puerto, () => {
-    console.log(`Servicio de prediccion JavaScript activo en http://localhost:${puerto}`);
+    console.log(`Servicio de prediccion JavaScript activo en el puerto: ${puerto}`);
   });
 }
