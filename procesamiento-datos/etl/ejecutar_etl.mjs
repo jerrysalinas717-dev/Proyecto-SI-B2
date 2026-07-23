@@ -22,7 +22,16 @@ const tamanoLote = configuracionProcesamiento.tamanoLoteEtl;
 
 async function obtenerTirosPorPartido(rutaEventos, partidosPermitidos) {
   const tiros = new Map();
+  let lineasProcesadas = 0; // NUEVO: Contador
+
   for await (const { fila } of leerCsv(rutaEventos)) {
+    lineasProcesadas += 1;
+    
+    // NUEVO: Imprime progreso cada 50,000 líneas leídas del CSV de eventos
+    if (lineasProcesadas % 50000 === 0) {
+      console.log(`> Leyendo events.csv: ${lineasProcesadas} líneas escaneadas...`);
+    }
+
     if (partidosPermitidos && !partidosPermitidos.has(fila.id_odsp)) continue;
     if (fila.event_type !== "1") continue;
     const actual = tiros.get(fila.id_odsp) ?? { local: 0, visitante: 0 };
@@ -30,6 +39,8 @@ async function obtenerTirosPorPartido(rutaEventos, partidosPermitidos) {
     if (fila.side === "2") actual.visitante += 1;
     tiros.set(fila.id_odsp, actual);
   }
+  
+  console.log(`> Lectura de eventos finalizada. Total líneas: ${lineasProcesadas}`);
   return tiros;
 }
 
@@ -302,6 +313,9 @@ async function cargarPartidos(pool, loteId, partidos, tiros, resumen) {
       resumen.filasCargadas += 1;
     }
 
+    // NUEVO: Aviso de partidos listos
+    console.log(`> Partidos procesados e insertados: ${resumen.filasCargadas}`);
+
     await cliente.query("COMMIT");
     return partidosCargados;
   } catch (error) {
@@ -315,10 +329,90 @@ async function cargarPartidos(pool, loteId, partidos, tiros, resumen) {
 async function cargarEventos(pool, loteId, rutaEventos, partidosCargados, resumen) {
   const cacheJugadores = new Map();
   let cliente = await pool.connect();
-  let operacionesLote = 0;
+  const tamanoLoteBulk = 2000; // filas por lote en bloque (antes: 1 por 1)
+  let bufer = [];
   let eventosNuevos = 0;
 
   await cliente.query("BEGIN");
+
+  async function volcarLote() {
+    if (bufer.length === 0) return;
+    const validos = bufer;
+    bufer = [];
+
+    const insertado = await cliente.query(
+      `INSERT INTO preparacion.evento_original(
+         evento_origen_id, partido_origen_id, codigo_tipo_evento, lado_evento,
+         minuto_evento, nombre_jugador, nombre_equipo, codigo_ubicacion_tiro,
+         codigo_resultado_tiro, es_gol
+       )
+       SELECT * FROM UNNEST(
+         $1::text[], $2::text[], $3::int[], $4::int[],
+         $5::int[], $6::text[], $7::text[], $8::int[],
+         $9::int[], $10::boolean[]
+       )
+       ON CONFLICT (evento_origen_id) DO NOTHING
+       RETURNING evento_origen_id`,
+      [
+        validos.map(v => v.evento.eventoOrigenId),
+        validos.map(v => v.evento.partidoOrigenId),
+        validos.map(v => v.evento.codigoTipoEvento),
+        validos.map(v => v.evento.ladoEvento),
+        validos.map(v => v.evento.minutoEvento),
+        validos.map(v => v.evento.nombreJugador),
+        validos.map(v => v.evento.nombreEquipo),
+        validos.map(v => v.evento.codigoUbicacionTiro),
+        validos.map(v => v.evento.codigoResultadoTiro),
+        validos.map(v => Boolean(v.evento.esGol))
+      ]
+    );
+
+    const idsInsertados = new Set(insertado.rows.map(r => r.evento_origen_id));
+    const nuevos = validos.filter(v => idsInsertados.has(v.evento.eventoOrigenId));
+    if (nuevos.length === 0) return;
+
+    const filasHecho = [];
+    for (const v of nuevos) {
+      const partido = partidosCargados.get(v.evento.partidoOrigenId);
+      const equipoId = v.evento.ladoEvento === 1 ? partido.equipoLocalId : partido.equipoVisitanteId;
+      const jugadorId = await obtenerIdJugador(cliente, cacheJugadores, v.evento.nombreJugador, equipoId);
+      filasHecho.push({ ...v.evento, equipoId, jugadorId, partidoId: partido.partidoId, fechaId: partido.fechaId });
+    }
+
+    await cliente.query(
+      `INSERT INTO almacen.hecho_evento(
+         partido_id, fecha_id, equipo_id, jugador_id, tipo_evento_id,
+         minuto_evento, codigo_ubicacion_tiro, codigo_resultado_tiro, es_gol
+       )
+       SELECT d.partido_id, d.fecha_id, d.equipo_id, d.jugador_id, t.tipo_evento_id,
+              d.minuto_evento, d.codigo_ubicacion_tiro, d.codigo_resultado_tiro, d.es_gol
+       FROM UNNEST(
+         $1::int[], $2::int[], $3::int[], $4::int[],
+         $5::int[], $6::int[], $7::int[], $8::boolean[], $9::int[]
+       ) AS d(partido_id, fecha_id, equipo_id, jugador_id, minuto_evento,
+              codigo_ubicacion_tiro, codigo_resultado_tiro, es_gol, codigo_tipo_evento)
+       JOIN almacen.dim_tipo_evento t ON t.codigo_origen = d.codigo_tipo_evento`,
+      [
+        filasHecho.map(f => f.partidoId),
+        filasHecho.map(f => f.fechaId),
+        filasHecho.map(f => f.equipoId),
+        filasHecho.map(f => f.jugadorId),
+        filasHecho.map(f => f.minutoEvento),
+        filasHecho.map(f => f.codigoUbicacionTiro),
+        filasHecho.map(f => f.codigoResultadoTiro),
+        filasHecho.map(f => Boolean(f.esGol)),
+        filasHecho.map(f => f.codigoTipoEvento)
+      ]
+    );
+
+    eventosNuevos += nuevos.length;
+    resumen.filasCargadas += nuevos.length;
+    await cliente.query("COMMIT");
+    console.log(`> Progreso eventos: ${eventosNuevos} filas subidas a la nube...`);
+    cliente.release();
+    cliente = await pool.connect();
+    await cliente.query("BEGIN");
+  }
 
   try {
     for await (const { fila, numeroFila } of leerCsv(rutaEventos)) {
@@ -328,90 +422,15 @@ async function cargarEventos(pool, loteId, rutaEventos, partidosCargados, resume
       const transformado = transformarEvento(fila);
       if (transformado.errores.length > 0) {
         resumen.filasRechazadas += 1;
-        await registrarRechazo(
-          cliente,
-          loteId,
-          "events.csv",
-          numeroFila,
-          transformado.errores.join("; "),
-          fila
-        );
-        operacionesLote += 1;
-      } else {
-        const insercionPreparacion = await cliente.query(
-          `INSERT INTO preparacion.evento_original(
-             evento_origen_id, partido_origen_id, codigo_tipo_evento, lado_evento,
-             minuto_evento, nombre_jugador, nombre_equipo, codigo_ubicacion_tiro,
-             codigo_resultado_tiro, es_gol
-           ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-           ON CONFLICT (evento_origen_id) DO NOTHING
-           RETURNING evento_origen_id`,
-          [
-            transformado.evento.eventoOrigenId,
-            transformado.evento.partidoOrigenId,
-            transformado.evento.codigoTipoEvento,
-            transformado.evento.ladoEvento,
-            transformado.evento.minutoEvento,
-            transformado.evento.nombreJugador,
-            transformado.evento.nombreEquipo,
-            transformado.evento.codigoUbicacionTiro,
-            transformado.evento.codigoResultadoTiro,
-            Boolean(transformado.evento.esGol)
-          ]
-        );
-
-        if (insercionPreparacion.rowCount) {
-          const partido = partidosCargados.get(transformado.evento.partidoOrigenId);
-          const equipoId =
-            transformado.evento.ladoEvento === 1
-              ? partido.equipoLocalId
-              : partido.equipoVisitanteId;
-          const jugadorId = await obtenerIdJugador(
-            cliente,
-            cacheJugadores,
-            transformado.evento.nombreJugador,
-            equipoId
-          );
-
-          await cliente.query(
-            `INSERT INTO almacen.hecho_evento(
-               partido_id, fecha_id, equipo_id, jugador_id, tipo_evento_id,
-               minuto_evento, codigo_ubicacion_tiro, codigo_resultado_tiro, es_gol
-             )
-             SELECT $1, $2, $3, $4, tipo_evento_id, $5, $6, $7, $8
-             FROM almacen.dim_tipo_evento
-             WHERE codigo_origen = $9`,
-            [
-              partido.partidoId,
-              partido.fechaId,
-              equipoId,
-              jugadorId,
-              transformado.evento.minutoEvento,
-              transformado.evento.codigoUbicacionTiro,
-              transformado.evento.codigoResultadoTiro,
-              Boolean(transformado.evento.esGol),
-              transformado.evento.codigoTipoEvento
-            ]
-          );
-
-          resumen.filasCargadas += 1;
-          eventosNuevos += 1;
-          operacionesLote += 1;
-        }
+        await registrarRechazo(cliente, loteId, "events.csv", numeroFila, transformado.errores.join("; "), fila);
+        continue;
       }
 
-      if (operacionesLote >= tamanoLote) {
-        await cliente.query("COMMIT");
-        cliente.release();
-        if (eventosNuevos > 0 && eventosNuevos % (tamanoLote * 10) < tamanoLote) {
-          console.log(`Eventos nuevos cargados: ${eventosNuevos}`);
-        }
-        cliente = await pool.connect();
-        await cliente.query("BEGIN");
-        operacionesLote = 0;
-      }
+      bufer.push(transformado);
+      if (bufer.length >= tamanoLoteBulk) await volcarLote();
     }
 
+    await volcarLote();
     await cliente.query("COMMIT");
   } catch (error) {
     await cliente.query("ROLLBACK").catch(() => undefined);

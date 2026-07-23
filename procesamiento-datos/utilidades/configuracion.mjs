@@ -2,6 +2,8 @@ import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { rutaProyecto } from "./rutas.mjs";
+import dns from "node:dns";
+dns.setDefaultResultOrder("ipv4first");
 
 const requireDesdeServidor = createRequire(new URL("../../servidor/package.json", import.meta.url));
 const dotenv = requireDesdeServidor("dotenv");
